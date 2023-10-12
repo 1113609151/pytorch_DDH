@@ -5,48 +5,56 @@ def evaluate_macro(Rel, Ret):
 	'''
 	evaluate macro_averaged performance
 	Input:
-		Rel = relevant  train documents for each test document
-		Ret = retrieved train documents for each test document
+		Rel =  数据库中与测试文档类别是否相同
+		Ret =  数据库的相关文档是否与测试文档在汉明距离内
 
 	Output:
 		p   = macro_averaged precision
 		r   = macro_averaged recall  
 	'''
 	Rel_mat = np.mat(Rel)
-	numTest = Rel_mat.shape[1]
-	print 'numTest=',numTest
+	numTest = Rel_mat.shape[1]    #Rel_mat = size(numTrain,numTest)
+
+	# print ('numTest=',numTest)
 	precisions = np.zeros((numTest))
 	recalls    = np.zeros((numTest))
 
+	#每个元素表示对应位置的文档是否同时被认为是相关和检索到的。
 	retrieved_relevant_pairs = (Rel & Ret)
 
-	for j in xrange(numTest):
+	for j in range(numTest):
+		#retrieved_relevant_num 表示在 retrieved_relevant_pairs 矩阵的第 j 列中，非零元素的数量。
 		retrieved_relevant_num = len(retrieved_relevant_pairs[:,j][np.nonzero(retrieved_relevant_pairs[:,j])])
-		#print 'retrieved_relevant_num=',retrieved_relevant_num
+
+		#retrieved_num 表示在 Ret 矩阵的第 j 列中，非零元素的数量。
 		retrieved_num = len(Ret[:, j][np.nonzero(Ret[:, j])])
-		#print 'retrieved_num=',retrieved_num
+
+		#relevant_num 表示在 Rel 矩阵的第 j 列中，非零元素的数量。
 		relevant_num  = len(Rel[:, j][np.nonzero(Rel[:, j])])
-		#print 'relevant_num=',relevant_num
 		
 		if retrieved_num:
-			#print 1
+			#计算了在第 j 个测试文档中的精确度，即检索到的相关文档数与检索到的文档数之比，并将结果存储在 precisions 数组的第 j 个位置。
 			precisions[j] = float(retrieved_relevant_num) / retrieved_num
 		
 		else:
 			precisions[j] = 0.0
 
 		if relevant_num:
-			recalls[j]    = float(retrieved_relevant_num) / relevant_num
+			#计算了在第 j 个测试文档中的召回率，即检索到的相关文档数与相关文档数之比，并将结果存储在 recalls 数组的第 j 个位置。
+			recalls[j] = float(retrieved_relevant_num) / relevant_num
 		
 		else:
-			recalls[j]    = 0.0
+			recalls[j] = 0.0
 
 	p = np.mean(precisions)
 	r = np.mean(recalls)
+
 	return p,r
 
 
 if __name__ == '__main__':
-	cateTrainTest = np.array([[True, True, False, False],[False, False, False, True]])
+	Rel = np.array([[True, True, False, False],[False, False, False, True]])
 	Ret = np.array([[False, True, False, True],[True, True, False, False]])
-	evaluate_macro(cateTrainTest, Ret)
+
+	p, r = evaluate_macro(Rel, Ret)
+	print('p=',p,'r=',r)
