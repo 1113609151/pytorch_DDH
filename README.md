@@ -1,4 +1,4 @@
-# Keras-Face_Retrieval_method
+# Pytorch-Face_Retrieval_method
 
 - [Discriminative Deep Hashing for Scalable Face Image Retrieval](https://www.ijcai.org/proceedings/2017/0315.pdf)(DDH), IJCAI 2017
 
@@ -14,7 +14,7 @@ In this work, we propose a novel Discriminative Deep Hashing (DDH) framework for
 
 ## Prerequisites
 
-1. python 2.7.12
+1. python 3.12
 2. Keras 1.2.2
 3. Theano 0.8.2
 
@@ -46,14 +46,3 @@ REGULARIZER_PARAMS = 0.0001
 2、When RUN_OR_CHECK is True, it's train mode, you can set WEIGHTS_SAVE_PATH to set the weight of the save path. It's eval mode when RUN_OR_CHECK is False, you can set WEIGHTS_FILE_NAME to load the best weight.
 
 3、In the eval mode, you can get the result of the precision, recall, map from the 'model_predict' function. 
-
-### Citing our work 
-
-```
-@inproceedings{lin2017discriminative,
-  title={Discriminative deep hashing for scalable face image retrieval},
-  author={Lin, Jie and Li, Zechao and Tang, Jinhui},
-  booktitle={Proceedings of International Joint Conference on Artificial Intelligence},
-  year={2017}
-}
-```
