@@ -47,5 +47,5 @@ REGULARIZER_PARAMS = 0.0001
 
 3、In the eval mode, you can get the result of the precision, recall, map from the 'model_predict' function. 
 
-###Thanks
+### Thanks
 @Jackie Lin DDH: https://github.com/xjcvip007/DDH
