@@ -15,8 +15,7 @@ In this work, we propose a novel Discriminative Deep Hashing (DDH) framework for
 ## Prerequisites
 
 1. python 3.12
-2. Keras 1.2.2
-3. Theano 0.8.2
+2. torch==2.0.1+cu117
 
 ### Data
 
