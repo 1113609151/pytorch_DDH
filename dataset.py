@@ -49,7 +49,7 @@ class DDH_train_dataset(Dataset):
 		self.train_label = encoder.fit_transform(self.train_label.reshape(-1, 1))
 
 	def __len__(self):
-		return len(self.train_label[0])
+		return len(self.train_data)
 
 	def __getitem__(self, idx):
 		data, label = self.train_data[idx], self.train_label[idx]
@@ -68,7 +68,6 @@ class DDH_train_dataset(Dataset):
 	def get_gallery_data(self):
 		return self.train_data, self.gallery_set_y
 	
-
 class DDH_test_dataset(Dataset):
 	def __init__(self, test_set_path):
 		test_file_names = get_files(test_set_path)
@@ -82,7 +81,7 @@ class DDH_test_dataset(Dataset):
 		self.test_label = encoder.fit_transform(self.test_label.reshape(-1, 1))
 
 	def __len__(self):
-		return len(self.test_label[0])
+		return len(self.test_data)
 
 	def __getitem__(self, idx):
 		data, label = self.test_data[idx], self.test_label[idx]
@@ -100,3 +99,13 @@ class DDH_test_dataset(Dataset):
 
 	def get_query_data(self):
 		return self.test_data, self.query_set_y
+	
+
+if __name__ == "__main__":
+	train_set = DDH_train_dataset(TRAIN_SET_PATH)
+	data, label = train_set.get_gallery_data()
+	print(data.shape)
+	print(label.shape)
+	
+	#求label中的最小值
+	print(np.min(label))
