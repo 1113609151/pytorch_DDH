@@ -26,7 +26,7 @@ from numpy.matlib import repmat
 from utils.compactbit import *
 from utils.hammingDist import *
 from utils.evaluate_macro import *
-from utils.cat_apcal import *
+from utils.metrics import *
 import copy
 
 # DATASET_NAME = 'facescrub'
@@ -37,8 +37,8 @@ if DATASET_NAME == 'youtubeface':
 	TEST_SET_PATH = '/your/file/dir/to/youtubeface_test_set'
 	NB_CLASSES = 1595
 else:
-    TRAIN_SET_PATH = '/your/file/dir/to/facescrub_train_set'
-    TEST_SET_PATH = '/your/file/dir/to/facescrub_test_set'
+    TRAIN_SET_PATH = 'facescrub_train_set'
+    TEST_SET_PATH = 'dataset/facescrub_test_set'
     NB_CLASSES = 530
 
 WEIGHTS_SAVE_PATH = 'you/file/dir/to/weights'
@@ -65,7 +65,7 @@ def load_data_split_pickle(dataset): #you can change this method to load your da
 		file_names = os.listdir(vec_folder)
 		file_names.sort()
 		vec_folder = check_path_valid(vec_folder)
-		for i in xrange(len(file_names)):
+		for i in range(len(file_names)):
 			file_names[i] = vec_folder + file_names[i]
 		return file_names
 
@@ -120,22 +120,26 @@ def face_hash_mean_loss(y_true, y_pred):
 
 def build_DDN_net(hash_num, split_num,REGULARIZER_PARAMS):
 	main_input = Input(shape=(3, 32, 32), name='main_input')
+
 	C1 = Convolution2D(20, 3, 3, border_mode='valid', init='he_uniform',
-					   W_regularizer=l2(REGULARIZER_PARAMS))(main_input)
+					W_regularizer=l2(REGULARIZER_PARAMS))(main_input)
 	B1 = BatchNormalization(axis=1)(C1)
 	A1 = Activation('relu')(B1)
 	M1 = MaxPooling2D(pool_size=(2, 2), border_mode='valid')(A1)
+
 	C2 = Convolution2D(40, 2, 2, border_mode='valid', init='he_uniform',
-					   W_regularizer=l2(REGULARIZER_PARAMS))(M1)
+					W_regularizer=l2(REGULARIZER_PARAMS))(M1)
 	B2 = BatchNormalization(axis=1)(C2)
 	A2 = Activation('relu')(B2)
 	M2 = MaxPooling2D(pool_size=(2, 2), border_mode='valid')(A2)
+
 	C3 = Convolution2D(60, 2, 2, border_mode='valid', init='he_uniform',
-					   W_regularizer=l2(REGULARIZER_PARAMS))(M2)
+					W_regularizer=l2(REGULARIZER_PARAMS))(M2)
 	B3 = BatchNormalization(axis=1)(C3)
 	A3 = Activation('relu')(B3)
 	M3 = MaxPooling2D(pool_size=(2, 2), border_mode='valid')(A3)
 	M3_flatten = Flatten()(M3)
+
 	C4 = LocallyConnected2D(80, 2, 2, border_mode='valid', init='he_uniform',
 							W_regularizer=l2(REGULARIZER_PARAMS))(M3)
 	B4 = BatchNormalization(axis=1)(C4)
@@ -147,9 +151,9 @@ def build_DDN_net(hash_num, split_num,REGULARIZER_PARAMS):
 	B5 = BatchNormalization()(Deepid_layer)
 	A5 = Activation('relu')(B5)
 
-	# DAE Modul in DDH
+	# DAE Modul in DDHse
 	outs = []
-	for i in xrange(hash_num):
+	for i in range(hash_num):
 		slice_layer = Lambda(lambda x: x[:, split_num * i:split_num * i + split_num], output_shape=split_output_shape)(
 			A5)
 		fuse_layer = Dense(1, W_regularizer=l2(REGULARIZER_PARAMS))(slice_layer)
@@ -161,6 +165,7 @@ def build_DDN_net(hash_num, split_num,REGULARIZER_PARAMS):
 	Softmax_layer = Dense(NB_CLASSES, activation='softmax', name='softmax_layer', W_regularizer=l2(REGULARIZER_PARAMS))(
 		A6)
 	loss_01_layer = Lambda(loss_01, output_shape=loss_01_ouput_shape, name='loss_01_layer')(A6)
+	
 	model = Model(input=main_input, output=[Softmax_layer, loss_01_layer])
 	return model
 
@@ -168,25 +173,27 @@ def model_train(train_set_x, train_set_y):
 	adam = Adam()
 	earlystop = EarlyStopping(monitor='loss', patience=50, mode='min')
 	mcp = ModelCheckpoint(WEIGHTS_SAVE_PATH + 'weights.{epoch:02d}-{loss:.3f}.hdf5', monitor='loss', verbose=0,
-						  save_best_only=True, save_weights_only=True, mode='min')
+						save_best_only=True, save_weights_only=True, mode='min')
 	model = build_DDN_net(HASH_NUM, SPLIT_NUM, REGULARIZER_PARAMS)
 	model.summary()
-	print 'train start time: '+time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
-	print 'loss_01_layer_param is {0}'.format(LOSS_01_LAYER_PARAMS)
+
+	print ('train start time: '+time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time())))
+	print (f'loss_01_layer_param is {LOSS_01_LAYER_PARAMS}')
 	model.compile(loss={'loss_01_layer':face_hash_01_loss, 'softmax_layer':'categorical_crossentropy'},
-			   optimizer=adam,loss_weights={'loss_01_layer':LOSS_01_LAYER_PARAMS, 'softmax_layer':1.0}, metrics={'softmax_layer':'accuracy'})
+			optimizer=adam,loss_weights={'loss_01_layer':LOSS_01_LAYER_PARAMS, 'softmax_layer':1.0}, metrics={'softmax_layer':'accuracy'})
 	hist = model.fit({'main_input':train_set_x}, {'loss_01_layer':np.zeros((train_set_y.shape[0],1)), 'softmax_layer':train_set_y},
-					 batch_size=256, shuffle=True, nb_epoch=NB_EPOCHS, validation_split=0.1, callbacks=[earlystop,mcp])
+					batch_size=256, shuffle=True, nb_epoch=NB_EPOCHS, validation_split=0.1, callbacks=[earlystop,mcp])
 
 def model_predict(train_set_x, test_set_x, gallery_set_y, query_set_y):
 	global WEIGHTS_SAVE_PATH, WEIGHTS_FILE_NAME
 	if not WEIGHTS_FILE_NAME:
-		print 'no weights_file, please add weights file!'
+		print ('no weights_file, please add weights file!')
 		return
-	print 'predict start time: ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+	print ('predict start time: ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 	model = build_DDN_net(HASH_NUM, SPLIT_NUM, REGULARIZER_PARAMS)
 	model.load_weights(WEIGHTS_SAVE_PATH + WEIGHTS_FILE_NAME)
 	Deepid_output = Model(input=model.get_layer('main_input').input,output=model.get_layer('A6').output)
+	
 	gallery_set_x = Deepid_output.predict(train_set_x)
 	query_set_x = Deepid_output.predict(test_set_x)
 
@@ -201,9 +208,9 @@ def model_predict(train_set_x, test_set_x, gallery_set_y, query_set_y):
 	train_y_rep = repmat(train_data_y, 1, test_data_y.shape[0])
 	test_y_rep = repmat(test_data_y.T, train_data_y.shape[0], 1)
 	cateTrainTest = (train_y_rep == test_y_rep)
+
 	train_data_y = train_data_y + 1
 	test_data_y = test_data_y + 1
-
 	train_data_y = np.asarray(train_data_y, dtype=int)
 	test_data_y = np.asarray(test_data_y, dtype=int)
 
@@ -215,14 +222,14 @@ def model_predict(train_set_x, test_set_x, gallery_set_y, query_set_y):
 
 	Ret = (hammTrainTest <= hammRadius + 0.000001)
 	[Pre, Rec] = evaluate_macro(cateTrainTest, Ret)
-	print 'Precision with Hamming radius_2 = ', Pre
-	print 'Recall with Hamming radius_2 = ', Rec
-
+	print ('Precision with Hamming radius_2 = ', Pre)
+	print ('Recall with Hamming radius_2 = ', Rec)
+	
 	HammingRank = np.argsort(hammTrainTest, axis=0)
 	[MAP, p_topN] = cat_apcal(train_data_y, test_data_y, HammingRank, TOP_K)
-	print 'MAP with Hamming Ranking = ', MAP
-	print 'Precision of top %d returned = %f ' % (TOP_K, p_topN)
-	print 'predict finish time: ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
+	print ('MAP with Hamming Ranking = ', MAP)
+	print ('Precision of top %d returned = %f ' % (TOP_K, p_topN))
+	print ('predict finish time: ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 
 if __name__ == '__main__':
 
