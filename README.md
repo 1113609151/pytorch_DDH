@@ -38,13 +38,13 @@ We compress the dataset into pkl format for easy read by small memory machines.
 
 1、For different datasets, you can try different hyper parameters corresponding to regularization and quantization errors. In our experiments, our settings are as follows:
 
-LOSS_01_LAYER_PARAMS = 0.01
+LOSS_01_LAYER_PARAMS = 1
 
-REGULARIZER_PARAMS = 0.0001
+REGULARIZER_PARAMS = 0.0002
 
-2、When RUN_OR_CHECK is True, it's train mode, you can set WEIGHTS_SAVE_PATH to set the weight of the save path. It's eval mode when RUN_OR_CHECK is False, you can set WEIGHTS_FILE_NAME to load the best weight.
+2、After running train.py, you can set WEIGHTS_SAVE_PATH to set the weight of the save path. Then you can test your model's performance by running predict.py.
 
-3、In the eval mode, you can get the result of the precision, recall, map from the 'model_predict' function. 
+3、In the predict.py, you can get the result of the precision, recall, map from the 'model_predict' function. 
 
 ### Thanks
 @Jackie Lin DDH: https://github.com/xjcvip007/DDH
