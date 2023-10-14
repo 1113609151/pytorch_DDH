@@ -45,7 +45,7 @@ def convert(arr):
 if __name__ == '__main__':
 	b = np.array([[0,0,1,1,0,0,0,1,1,1],[0,0,0,1,0,0,1,1,1,1]])
 	#测试convert
-	# print(convert([1,0,0]))
+	print(convert([1,-1,1,1]))
 
 	#测试compactbit
-	print(compactbit(b))
+	# print(compactbit(b))
