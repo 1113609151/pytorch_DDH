@@ -142,3 +142,4 @@ data/youtubeface_train_set/60.pkl
 data/youtubeface_train_set/61.pkl
 data/youtubeface_train_set/62.pkl
 data/youtubeface_train_set/63.pkl
+weights/best_weights.pth
