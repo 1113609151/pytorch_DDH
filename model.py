@@ -83,11 +83,16 @@ class DDH(nn.Module):
 
         # self.face_feature_layer = nn.Linear(self.merge.shape[1], self.hash_num * self.split_num)
         # init.kaiming_normal_(self.face_feature_layer.weight)
+        self.merge_layer = nn.Linear(860, self.hash_num * self.split_num)
 
         self.C5_block = nn.Sequential(
             nn.BatchNorm1d(self.hash_num * self.split_num),
             nn.ReLU()
         )
+
+        self.module_list = nn.ModuleList([])
+        for _ in range(self.hash_num):
+            self.module_list.append(nn.Linear(self.split_num, 1))
 
         self.C6_block = nn.Sequential(
             nn.BatchNorm1d(self.hash_num),
@@ -106,14 +111,17 @@ class DDH(nn.Module):
         x_2 = self.C4_flatten(x)
 
         x = torch.cat((x_1, x_2), dim=1)
-        x = nn.Linear(x.shape[1], self.hash_num * self.split_num).cuda()(x)
+        # print(x.shape)
+        x = self.merge_layer(x)
         x = self.C5_block(x)
 
         outs = []
         for i in range(self.hash_num):
             slice_array = x[:, i * self.split_num : (i + 1) * self.split_num]
-            fuse_layer = nn.Linear(slice_array.shape[1], 1).cuda()
-            outs.append(fuse_layer(slice_array))
+            # print(slice_array.shape)
+            fuse_layer = self.module_list[i]
+            out = fuse_layer(slice_array)
+            outs.append(out)
 
         x = torch.cat(outs, dim=1)
         x = self.C6_block(x)
@@ -125,5 +133,5 @@ if __name__ == "__main__":
     input_data = torch.randn(2, 3, 32, 32)
     model = DDH(10, 3, 3)
     output, softmax = model(input_data)
-    print(output.shape)
-    print(softmax.shape)
+    # print(output.shape)
+    # print(softmax.shape)
