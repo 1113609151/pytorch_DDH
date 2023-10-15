@@ -144,3 +144,14 @@ data/youtubeface_train_set/62.pkl
 data/youtubeface_train_set/63.pkl
 weights/best_weights.pth
 DDH.py
+runs/Oct14_19-23-23_LAPTOP-IOT6F9VD/events.out.tfevents.1697282603.LAPTOP-IOT6F9VD
+runs/Oct14_21-47-20_LAPTOP-IOT6F9VD/events.out.tfevents.1697291240.LAPTOP-IOT6F9VD
+runs/Oct15_10-56-28_LAPTOP-IOT6F9VD/events.out.tfevents.1697338588.LAPTOP-IOT6F9VD
+runs/Oct15_10-56-57_LAPTOP-IOT6F9VD/events.out.tfevents.1697338617.LAPTOP-IOT6F9VD
+runs/Oct15_11-01-06_LAPTOP-IOT6F9VD/events.out.tfevents.1697338866.LAPTOP-IOT6F9VD
+runs/Oct15_11-10-36_LAPTOP-IOT6F9VD/events.out.tfevents.1697339436.LAPTOP-IOT6F9VD
+runs/Oct15_12-14-01_LAPTOP-IOT6F9VD/events.out.tfevents.1697343241.LAPTOP-IOT6F9VD
+runs/Oct15_12-51-47_LAPTOP-IOT6F9VD/events.out.tfevents.1697345507.LAPTOP-IOT6F9VD
+runs/Oct15_14-04-56_LAPTOP-IOT6F9VD/events.out.tfevents.1697349896.LAPTOP-IOT6F9VD
+weights/best_weights_1.pth
+weights/best_weights_2.pth

@@ -118,8 +118,8 @@ class DDH(nn.Module):
         x = torch.cat(outs, dim=1)
         x = self.C6_block(x)
 
-        softmax = F.softmax(self.liner_last(x), dim=1)
-        return x, softmax
+        prob = self.liner_last(x)
+        return x, prob
     
 if __name__ == "__main__":
     input_data = torch.randn(2, 3, 32, 32)
