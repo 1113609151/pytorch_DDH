@@ -7,6 +7,7 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 from config import *
 from sklearn.preprocessing import OneHotEncoder
+from torch.utils.data import DataLoader
 from PIL import Image
 
 def check_path_valid(path):
@@ -43,10 +44,10 @@ class DDH_train_dataset(Dataset):
 		#train_data = [n, 3, 32, 32]
 
 		#将原有label进行深拷贝
-		self.gallery_set_y = copy.deepcopy(self.train_label)
+		# self.gallery_set_y = copy.deepcopy(self.train_label)
 
-		encoder = OneHotEncoder(sparse_output=False)
-		self.train_label = encoder.fit_transform(self.train_label.reshape(-1, 1))
+		# encoder = OneHotEncoder(sparse_output=False)
+		# self.train_label = encoder.fit_transform(self.train_label.reshape(-1, 1))
 
 	def __len__(self):
 		return len(self.train_data)
@@ -62,11 +63,11 @@ class DDH_train_dataset(Dataset):
 		])
 
 		data = transform(data)
-		label = torch.from_numpy(label)
+		label = torch.tensor(label, dtype=torch.long)
 		return data, label
     
 	def get_gallery_data(self):
-		return self.train_data, self.gallery_set_y
+		return self.train_data, self.train_label
 	
 class DDH_test_dataset(Dataset):
 	def __init__(self, test_set_path):
@@ -102,10 +103,14 @@ class DDH_test_dataset(Dataset):
 	
 
 if __name__ == "__main__":
-	train_set = DDH_train_dataset(TRAIN_SET_PATH)
-	data, label = train_set.get_gallery_data()
-	print(data.shape)
-	print(label.shape)
+	dataset = DDH_train_dataset(TRAIN_SET_PATH)
+	dataloader = DataLoader(dataset, batch_size=6, shuffle=False)
+	samples = iter(dataloader)
+	data, label = next(samples)
+	print(data.shape, label.shape)
 	
-	#求label中的最小值
-	print(np.min(label))
+	# print(data.shape)
+	# print(label.shape)
+	
+	# #求label中的最小值
+	# print(np.min(label))

@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.nn.modules.utils import _pair
 import torch.nn.init as init
 from config import *
+from torchsummary import summary
 
 class LocallyConnected2d(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride, bias=False):
@@ -74,6 +75,7 @@ class DDH(nn.Module):
             #nn.Conv2dLocal from https://github.com/pytorch/pytorch/pull/1583/files
             nn.Conv2dLocal(in_channels=60, out_channels=80, in_height=3, in_width=3, kernel_size=2, stride=1, padding=0),
             # LocallyConnected2d(60, 80, kernel_size=2, stride=1, bias=True),
+            # nn.Conv2d(60, 80, kernel_size=2, stride=1),
             nn.BatchNorm2d(80),
             nn.ReLU(),
         )
@@ -95,7 +97,7 @@ class DDH(nn.Module):
             self.module_list.append(nn.Linear(self.split_num, 1))
 
         self.C6_block = nn.Sequential(
-            nn.BatchNorm1d(self.hash_num),
+            # nn.BatchNorm1d(self.hash_num),
             nn.Tanh()
         )
 
@@ -127,11 +129,13 @@ class DDH(nn.Module):
         x = self.C6_block(x)
 
         prob = self.liner_last(x)
+
         return x, prob
     
 if __name__ == "__main__":
-    input_data = torch.randn(2, 3, 32, 32)
-    model = DDH(10, 3, 3)
-    output, softmax = model(input_data)
-    # print(output.shape)
-    # print(softmax.shape)
+    model = DDH(48, 4, 3).cuda()
+    summary(model, (3, 32, 32))
+
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            print(name, param.shape)
