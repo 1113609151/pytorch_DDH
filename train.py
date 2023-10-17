@@ -1,4 +1,5 @@
 from cmath import inf
+import time
 from tqdm import tqdm
 from config import *
 from model import DDH
@@ -9,21 +10,48 @@ from torch.utils.data import random_split
 import torch.nn.functional as F
 import torch.nn as nn
 from tensorboardX import SummaryWriter
+import logging
 
-def train(model, train_loader, optimizer, epoch, device):
+def getLogger(text):
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)  # Log等级总开关
+    formatter = logging.Formatter(fmt="[%(asctime)s|%(filename)s|%(levelname)s] %(message)s",
+                                datefmt="%a %b %d %H:%M:%S %Y")
+    # StreamHandler
+    sHandler = logging.StreamHandler()
+    sHandler.setFormatter(formatter)
+    logger.addHandler(sHandler)
+
+    # FileHandler
+    work_dir = os.path.join(TRAIN_LOG,
+                            time.strftime("%Y-%m-%d-%H.%M", time.localtime()))  # 日志文件写入目录
+    if not os.path.exists(work_dir):
+        os.makedirs(work_dir)
+    fHandler = logging.FileHandler(work_dir + '/' + text + '_' +'log.txt', mode='w')
+    fHandler.setLevel(logging.DEBUG)  # 输出到file的log等级的开关
+    fHandler.setFormatter(formatter)  # 定义handler的输出格式
+    logger.addHandler(fHandler)  # 将logger添加到handler里面
+
+    return logger
+
+
+def train(model, train_loader, optimizer, epoch, device, creiation, logger):
+    global max_acc
+    
+    print('进入训练阶段')
     model.train()
     min_loss = inf
     running_loss = running_cel_loss = running_parm_loss = running_01_loss =  0
     epoch_loss = 0
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data.to(device), target.to(device)
+    for batch_idx, (data, label) in enumerate(train_loader):
+        data, label = data.to(device), label.to(device)
         optimizer.zero_grad()
 
         output, prob = model(data)
         #output = [batch, hash_num], prob = [batch, nb_classes]
 
-        label = torch.argmax(target, dim=1)
-        loss_cel = nn.CrossEntropyLoss()(prob, label)
+        label = torch.argmax(label, dim=1)
+        loss_cel = creiation(prob, label)
 
         parameters = list(model.parameters())
         # last_layer_params = parameters[-1]
@@ -31,7 +59,7 @@ def train(model, train_loader, optimizer, epoch, device):
 
         loss_01 = torch.sum(torch.abs(torch.abs(output) - 1)) * LOSS_01
 
-        loss = loss_cel
+        loss = loss_cel + loss_01 + loss_parm
 
         running_loss += loss
         running_cel_loss += loss_cel
@@ -45,52 +73,86 @@ def train(model, train_loader, optimizer, epoch, device):
             #检查是否存在WEIGHTS_SAVE_PATH，没有的话创建文件夹
             if not os.path.exists(WEIGHTS_SAVE_PATH):
                 os.makedirs(WEIGHTS_SAVE_PATH)
-            torch.save(model.state_dict(), WEIGHTS_SAVE_PATH + WEIGHTS_FILE_NAME)
+            torch.save(model.state_dict(), WEIGHTS_SAVE_PATH + f'{HASH_NUM}'+'_'+f'{LOSS_01}'+ WEIGHTS_FILE_NAME)
 
         loss.backward()
         optimizer.step()
 
         if (batch_idx+1) % 10 == 0:
-                print(f'Train Epoch: {epoch} [{batch_idx+1}/{len(train_loader)+1})]\tLoss_: {running_loss / 10:.4f},Loss_cel: {running_cel_loss / 10:.4f}, Loss_parm: {running_parm_loss / 10:.4f}, Loss_01: {running_01_loss / 10:.4f}')
+                # print(f'Train Epoch: {epoch} [{batch_idx+1}/{len(train_loader)+1})]\tLoss_: {running_loss / 10:.4f},Loss_cel: {running_cel_loss / 10:.4f}, Loss_parm: {running_parm_loss / 10:.4f}, Loss_01: {running_01_loss / 10:.4f}')
+                logger.info(f'Train Epoch: {epoch} [{batch_idx+1}/{len(train_loader)+1})]\tLoss_: {running_loss / 10:.4f},Loss_cel: {running_cel_loss / 10:.4f}, Loss_parm: {running_parm_loss / 10:.4f}, Loss_01: {running_01_loss / 10:.4f}')
                 running_loss = running_cel_loss = running_parm_loss = running_01_loss =  0
 
-    return epoch_loss / len(train_loader)
+    with torch.no_grad():
+        print("进入测试阶段")
+        model.eval()
+        all_acc = 0
+        for batch_idx, (data, label) in enumerate(test_loader):
+            data, label = data.to(device), label.to(device)
+            label = torch.argmax(label, dim=1)
+            output, prob = model(data)
+            pred = torch.argmax(prob, dim=1)
+            acc = torch.sum(pred == label) / len(label)
+            all_acc += acc
+        
+        all_acc = all_acc / len(test_loader)
+        if max_acc < all_acc:
+            max_acc = all_acc
+        #     if not os.path.exists(WEIGHTS_SAVE_PATH):
+        #         os.makedirs(WEIGHTS_SAVE_PATH)
+        #     torch.save(model.state_dict(), WEIGHTS_SAVE_PATH + f'{HASH_NUM}'+'_'+f'{LOSS_01}'+ WEIGHTS_FILE_NAME)
+        
+        print(f'Eval Epoch: {epoch} \tacc: {all_acc:.4f}  max_acc: {max_acc:.4f}')
+
+    return epoch_loss / len(train_loader), all_acc
 
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = DDH(HASH_NUM, SPLIT_NUM, 3)
-    # model.load_state_dict(torch.load(WEIGHTS_SAVE_PATH + WEIGHTS_FILE_NAME))
+    # model.load_state_dict(torch.load(WEIGHTS_SAVE_PATH + f'{HASH_NUM}'+ WEIGHTS_FILE_NAME))
     model = model.to(device)
     dataset = DDH_train_dataset(TRAIN_SET_PATH)
-    print(len(dataset))
+    print(f'dataset size:{len(dataset)}')
+    
     # # 划分数据集
+    train_dataset, test_dataset = DDH_train_dataset(TRAIN_SET_PATH), DDH_test_dataset(TEST_SET_PATH)
     # dataset_size = len(dataset)
-    # train_size = int(0.9 * dataset_size)  # 训练集占80%
-    # test_size = dataset_size - train_size  # 测试集占20%
+    # train_size = int(0.9 * dataset_size)  # 训练集占90%
+    # test_size = dataset_size - train_size  # 测试集占10%
     # train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
+    print(f'train_dataset size:{len(train_dataset)}, test_dataset size:{len(test_dataset)}')
+
 
     # 创建数据加载器
     train_loader = DataLoader(
-        dataset=dataset,
+        dataset=train_dataset,
         batch_size=BATCH_SIZE,
         shuffle=True,
         num_workers=NUM_WORKERS
     )
 
-    # test_loader = DataLoader(
-    #     dataset=test_dataset,
-    #     batch_size=BATCH_SIZE,
-    #     shuffle=False,
-    #     num_workers=NUM_WORKERS
-    # )
+    test_loader = DataLoader(
+        dataset=test_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        num_workers=NUM_WORKERS
+    )
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=0.0001, betas=(0.9, 0.999))
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.9)
     writer = SummaryWriter()
+    crieation = nn.CrossEntropyLoss()
+    text = f'batch_size: {BATCH_SIZE}, lr: {LR}, hash_num: {HASH_NUM}, LOSS_01: {LOSS_01}'
+    logger = getLogger(text)
+    logger.info(f'batch_size: {BATCH_SIZE}, lr: {LR}, hash_num: {HASH_NUM}, LOSS_01: {LOSS_01}, REGULARIZER_PARAMS: {REGULARIZER_PARAMS}')
+    max_acc = 0
     for epoch in tqdm(range(1, EPOCHS + 1), desc='Train', unit='epoch'):
         print('开始训练')
-        loss = train(model, train_loader, optimizer, epoch, device)
+        loss, acc = train(model, train_loader, optimizer, epoch, device, crieation, logger)
+        scheduler.step()
         writer.add_scalar('Loss', loss, epoch)
+        writer.add_scalar('acc', acc, epoch)
 
 # 关闭SummaryWriter对象
 writer.close()

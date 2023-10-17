@@ -11,15 +11,13 @@ from dataset import *
 from torch.utils.data import DataLoader
 from numpy.matlib import repmat
 
-def model_predict(train_dataset, test_dataset, device):
-    if not os.path.exists(WEIGHTS_SAVE_PATH + WEIGHTS_FILE_NAME):
-        print ('no weights_file, please add weights file!')
-        return
+def model_predict(train_dataset, test_dataset, device, model):
+    # if not os.path.exists(WEIGHTS_SAVE_PATH + WEIGHTS_FILE_NAME):
+    #     print ('no weights_file, please add weights file!')
+    #     return
         
     print ('predict start time: ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-    model = DDH(HASH_NUM, SPLIT_NUM, 3).to(device)
-    model.load_state_dict(torch.load(WEIGHTS_SAVE_PATH + WEIGHTS_FILE_NAME))
-
+    model.eval()
     gallery_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
     
@@ -55,6 +53,8 @@ def model_predict(train_dataset, test_dataset, device):
     #将query_x中大于0的数设置为1，小于0的数设置为-1
     query_x[query_x > 0] = 1
     query_x[query_x < 0] = -1
+    print('query_x shape: ', query_x.shape)
+    print('query_y shape: ', query_y.shape)
 
     '''
     gallery_x shape:  (63800, 48)
@@ -67,6 +67,10 @@ def model_predict(train_dataset, test_dataset, device):
     train_data_y = train_data_y.reshape(-1, 1)
     test_binary_x, test_data_y = query_x, query_y
     test_data_y = test_data_y.reshape(-1, 1)
+    print('train_binary_x shape: ', train_binary_x.shape)
+    print('train_data_y shape: ', train_data_y.shape)
+    print('test_binary_x shape: ', test_binary_x.shape)
+    print('test_data_y shape: ', test_data_y.shape)
     '''
     train_binary_x shape:  (63800, 48)
     train_data_y shape:  (1,63800)
@@ -91,14 +95,14 @@ def model_predict(train_dataset, test_dataset, device):
     tB shape:  (7975, 6)
     '''
 
-    hammRadius = 2
+    hammRadius = 3
     hammTrainTest = hammingDist(tB, B).T
     '''hammTrainTest shape:  (7975, 63800)'''
 
     Ret = (hammTrainTest <= hammRadius + 0.000001)
     [Pre, Rec] = evaluate_macro(cateTrainTest, Ret)
-    print ('Precision with Hamming radius_2 = ', Pre)
-    print ('Recall with Hamming radius_2 = ', Rec)
+    print ('Precision with Hamming radius_3 = ', Pre)
+    print ('Recall with Hamming radius_3 = ', Rec)
 
     HammingRank = np.argsort(hammTrainTest, axis=0)
     [MAP, p_topN] = cat_apcal(train_data_y, test_data_y, HammingRank, TOP_K)
@@ -109,4 +113,6 @@ def model_predict(train_dataset, test_dataset, device):
 
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_predict(DDH_train_dataset(TRAIN_SET_PATH), DDH_test_dataset(TEST_SET_PATH), device)
+    model = DDH(HASH_NUM, SPLIT_NUM, 3).to(device)
+    model.load_state_dict(torch.load(WEIGHTS_SAVE_PATH + f'{HASH_NUM}'+'_'+f'{LOSS_01}'+ WEIGHTS_FILE_NAME))
+    model_predict(DDH_train_dataset(TRAIN_SET_PATH), DDH_test_dataset(TEST_SET_PATH), device, model)
