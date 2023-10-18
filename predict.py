@@ -53,8 +53,8 @@ def model_predict(train_dataset, test_dataset, device, model):
     #将query_x中大于0的数设置为1，小于0的数设置为-1
     query_x[query_x > 0] = 1
     query_x[query_x < 0] = -1
-    print('query_x shape: ', query_x.shape)
-    print('query_y shape: ', query_y.shape)
+    # print('query_x shape: ', query_x.shape)
+    # print('query_y shape: ', query_y.shape)
 
     '''
     gallery_x shape:  (63800, 48)
@@ -67,10 +67,10 @@ def model_predict(train_dataset, test_dataset, device, model):
     train_data_y = train_data_y.reshape(-1, 1)
     test_binary_x, test_data_y = query_x, query_y
     test_data_y = test_data_y.reshape(-1, 1)
-    print('train_binary_x shape: ', train_binary_x.shape)
-    print('train_data_y shape: ', train_data_y.shape)
-    print('test_binary_x shape: ', test_binary_x.shape)
-    print('test_data_y shape: ', test_data_y.shape)
+    # print('train_binary_x shape: ', train_binary_x.shape)
+    # print('train_data_y shape: ', train_data_y.shape)
+    # print('test_binary_x shape: ', test_binary_x.shape)
+    # print('test_data_y shape: ', test_data_y.shape)
     '''
     train_binary_x shape:  (63800, 48)
     train_data_y shape:  (1,63800)
@@ -78,9 +78,9 @@ def model_predict(train_dataset, test_dataset, device, model):
     test_data_y shape:  (1,7975)
     '''
 
-    train_y_rep = repmat(train_data_y, 1, test_data_y.shape[0])
-    test_y_rep = repmat(test_data_y.T, train_data_y.shape[0], 1)
-    cateTrainTest = (train_y_rep == test_y_rep)
+    # train_y_rep = repmat(train_data_y, 1, test_data_y.shape[0])
+    # test_y_rep = repmat(test_data_y.T, train_data_y.shape[0], 1)
+    # cateTrainTest = (train_y_rep == test_y_rep)
     '''cateTrainTest shape:  (63800, 7975)'''
 
     train_data_y = train_data_y + 1
@@ -97,18 +97,29 @@ def model_predict(train_dataset, test_dataset, device, model):
 
     hammRadius = 3
     hammTrainTest = hammingDist(tB, B).T
-    '''hammTrainTest shape:  (7975, 63800)'''
+    hammTrainTest = hammTrainTest.astype(float)
+    mask = train_data_y != test_data_y.T
+    hammTrainTest[mask] += 0.01
+    # print(hammTrainTest.shape)
+    '''hammTrainTest shape:  (63800, 7975)'''
 
-    Ret = (hammTrainTest <= hammRadius + 0.000001)
-    [Pre, Rec] = evaluate_macro(cateTrainTest, Ret)
-    print ('Precision with Hamming radius_3 = ', Pre)
-    print ('Recall with Hamming radius_3 = ', Rec)
+    # Ret = (hammTrainTest <= hammRadius + 0.000001)
+    # [Pre, Rec] = evaluate_macro(cateTrainTest, Ret)
+    # print ('Precision with Hamming radius_3 = ', Pre)
+    # print ('Recall with Hamming radius_3 = ', Rec)
 
     HammingRank = np.argsort(hammTrainTest, axis=0)
+
+    train_data_y = torch.tensor(train_data_y, dtype=torch.int).to(device)
+    test_data_y = torch.tensor(test_data_y, dtype=torch.int).to(device)
+    HammingRank = torch.tensor(HammingRank, dtype=torch.int).to(device)
+
     [MAP, p_topN] = cat_apcal(train_data_y, test_data_y, HammingRank, TOP_K)
     print ('MAP with Hamming Ranking = ', MAP)
     print ('Precision of top %d returned = %f ' % (TOP_K, p_topN))
     print ('predict finish time: ' + time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+
+    return MAP, p_topN
 
 
 if __name__ == '__main__':

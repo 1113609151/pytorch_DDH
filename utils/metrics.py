@@ -16,7 +16,10 @@ def cat_apcal(gallery_set_y: np.ndarray, query_set_y: np.ndarray, HammingRank: n
         for j in range(num_return_NN):
             if new_label[0, y[j]] == 1:
                 x += 1
-                p += float(x) / (j + 1)
+                temp = j
+                # while temp > 0 and hammingDist[i, y[temp]] == hammingDist[i, y[temp - 1]] and new_label[0, y[temp-1]] != 1:
+                #     temp -= 1
+                p += float(x) / (temp + 1)
         if p == 0:
             ap_all[i] = 0
         else:
@@ -42,9 +45,22 @@ def cat_apcal(gallery_set_y: np.ndarray, query_set_y: np.ndarray, HammingRank: n
 
 
 if __name__ == '__main__':
-    traingnd = np.array([[1],[4],[2],[1]])
-    testgnd  = np.array([[2],[4]])
-    hammingDist = np.array([[1,2],[2,1],[3,1],[0,2]])
-    HammingRank = np.argsort(hammingDist, axis=0)
+    traingnd = np.array([[1],[4],[2],[1], [2]])
+    testgnd  = np.array([[2], [4]])
+    hammingDist = np.array([[1,2],[2, 0],[1,2],[2,2], [3,2]])
+    hammingDist = hammingDist.astype(float)
+    # for i in range(hammingDist.shape[1]):
+    #     for j in range(hammingDist.shape[0]):
+    #         if traingnd[j][0] != testgnd[i][0]:
+    #             hammingDist[j][i] += 0.01
+    # 使用numpy的广播特性来比较traingnd和testgnd
+    mask = traingnd != testgnd.T
+
+    # 使用mask来更新hammingDist
+    hammingDist[mask] += 0.01
+    # hammingDist += 0.1 if np.array_equal(traingnd, testgnd) else 0
+    print(hammingDist)  
+    HammingRank = np.argsort(hammingDist, axis=0, )
+    print(HammingRank)
     ap, p_topN = cat_apcal(traingnd, testgnd, HammingRank, 2)
     print('ap: {}, p_topN: {}'.format(ap, p_topN))
