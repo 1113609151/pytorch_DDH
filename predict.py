@@ -97,9 +97,9 @@ def model_predict(train_dataset, test_dataset, device, model):
 
     hammRadius = 3
     hammTrainTest = hammingDist(tB, B).T
-    hammTrainTest = hammTrainTest.astype(float)
-    mask = train_data_y != test_data_y.T
-    hammTrainTest[mask] += 0.01
+    # hammTrainTest = hammTrainTest.astype(float)
+    # mask = train_data_y != test_data_y.T
+    # hammTrainTest[mask] += 1.01
     # print(hammTrainTest.shape)
     '''hammTrainTest shape:  (63800, 7975)'''
 
@@ -125,5 +125,5 @@ def model_predict(train_dataset, test_dataset, device, model):
 if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = DDH(HASH_NUM, SPLIT_NUM, 3).to(device)
-    model.load_state_dict(torch.load(WEIGHTS_SAVE_PATH + f'{HASH_NUM}'+'_'+f'{LOSS_01}'+ WEIGHTS_FILE_NAME))
+    model.load_state_dict(torch.load(WEIGHTS_SAVE_PATH + f'{HASH_NUM}'+'_'+f'{LOSS_01}'+ '_'+'MAX_MAP '+ WEIGHTS_FILE_NAME))
     model_predict(DDH_train_dataset(TRAIN_SET_PATH), DDH_test_dataset(TEST_SET_PATH), device, model)

@@ -11,12 +11,14 @@ import torch.nn.functional as F
 import torch.nn as nn
 from tensorboardX import SummaryWriter
 import logging
+from predict import model_predict
 
 def getLogger(text):
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)  # Log等级总开关
     formatter = logging.Formatter(fmt="[%(asctime)s|%(filename)s|%(levelname)s] %(message)s",
                                 datefmt="%a %b %d %H:%M:%S %Y")
+    
     # StreamHandler
     sHandler = logging.StreamHandler()
     sHandler.setFormatter(formatter)
@@ -37,12 +39,14 @@ def getLogger(text):
 
 def train(model, train_loader, optimizer, epoch, device, creiation, logger):
     global max_acc
-    
+    global max_map
+
     print('进入训练阶段')
     model.train()
     min_loss = inf
     running_loss = running_cel_loss = running_parm_loss = running_01_loss =  0
     epoch_loss = 0
+    MAP = 0
     for batch_idx, (data, label) in enumerate(train_loader):
         data, label = data.to(device), label.to(device)
         optimizer.zero_grad()
@@ -104,23 +108,29 @@ def train(model, train_loader, optimizer, epoch, device, creiation, logger):
         
         print(f'Eval Epoch: {epoch} \tacc: {all_acc:.4f}  max_acc: {max_acc:.4f}')
 
-    return epoch_loss / len(train_loader), all_acc
+        if epoch > 200:
+            MAP, _ = model_predict(train_dataset, test_dataset, device, model)
+            if max_map < MAP:
+                max_map = MAP
+                if not os.path.exists(WEIGHTS_SAVE_PATH):
+                    os.makedirs(WEIGHTS_SAVE_PATH)
+                torch.save(model.state_dict(), WEIGHTS_SAVE_PATH + f'{HASH_NUM}'+'_'+f'{LOSS_01}'+ '_'+'MAX_MAP '+ WEIGHTS_FILE_NAME)
+
+        print(f'Eval Epoch: {epoch} \tMAP: {MAP:.4f}  max_map: {max_map:.4f}')
+
+    return epoch_loss / len(train_loader), all_acc, MAP
 
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = DDH(HASH_NUM, SPLIT_NUM, 3)
-    # model.load_state_dict(torch.load(WEIGHTS_SAVE_PATH + f'{HASH_NUM}'+ WEIGHTS_FILE_NAME))
+    # model.load_state_dict(torch.load(WEIGHTS_SAVE_PATH + f'{HASH_NUM}'+'_'+f'{LOSS_01}'+ WEIGHTS_FILE_NAME))
     model = model.to(device)
     dataset = DDH_train_dataset(TRAIN_SET_PATH)
     print(f'dataset size:{len(dataset)}')
     
     # # 划分数据集
     train_dataset, test_dataset = DDH_train_dataset(TRAIN_SET_PATH), DDH_test_dataset(TEST_SET_PATH)
-    # dataset_size = len(dataset)
-    # train_size = int(0.9 * dataset_size)  # 训练集占90%
-    # test_size = dataset_size - train_size  # 测试集占10%
-    # train_dataset, test_dataset = random_split(dataset, [train_size, test_size])
     print(f'train_dataset size:{len(train_dataset)}, test_dataset size:{len(test_dataset)}')
 
 
@@ -140,16 +150,17 @@ if __name__ == "__main__":
     )
 
     optimizer = torch.optim.Adam(model.parameters(), lr=LR, weight_decay=0.0001, betas=(0.9, 0.999))
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.9)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.75)
     writer = SummaryWriter()
     crieation = nn.CrossEntropyLoss()
     text = f'batch_size: {BATCH_SIZE}, lr: {LR}, hash_num: {HASH_NUM}, LOSS_01: {LOSS_01}'
     logger = getLogger(text)
     logger.info(f'batch_size: {BATCH_SIZE}, lr: {LR}, hash_num: {HASH_NUM}, LOSS_01: {LOSS_01}, REGULARIZER_PARAMS: {REGULARIZER_PARAMS}')
     max_acc = 0
+    max_map = 0
     for epoch in tqdm(range(1, EPOCHS + 1), desc='Train', unit='epoch'):
         print('开始训练')
-        loss, acc = train(model, train_loader, optimizer, epoch, device, crieation, logger)
+        loss, acc, MAP = train(model, train_loader, optimizer, epoch, device, crieation, logger)
         scheduler.step()
         writer.add_scalar('Loss', loss, epoch)
         writer.add_scalar('acc', acc, epoch)
