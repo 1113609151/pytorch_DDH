@@ -38,9 +38,9 @@ We compress the dataset into pkl format for easy read by small memory machines.
 
 1、For different datasets, you can try different hyper parameters corresponding to regularization and quantization errors. In our experiments, our settings are as follows:
 
-LOSS_01_LAYER_PARAMS = 1
+LOSS_01_LAYER_PARAMS = 0.00001
 
-REGULARIZER_PARAMS = 0.0002
+REGULARIZER_PARAMS = 0.0000001
 
 2、After running train.py, you can set WEIGHTS_SAVE_PATH to set the weight of the save path. Then you can test your model's performance by running predict.py.
 
